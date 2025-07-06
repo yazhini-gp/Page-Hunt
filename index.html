@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PageHunt</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f2f5;
+      color: #333;
+    }
+    header {
+      background-color: #007bff;
+      color: white;
+      padding: 1rem 2rem;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    nav {
+      background-color: #0056b3;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 4rem;
+    }
+    .nav-left {
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .nav-right {
+      display: flex;
+      gap: 1.5rem;
+    }
+    .nav-right a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .nav-right a:hover {
+      text-decoration: underline;
+    }
+    main {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1rem;
+      color: #007bff;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px 0;
+      width: 100%;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .results {
+      margin-top: 20px;
+    }
+    .visual {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .frame {
+      border: 2px solid #333;
+      padding: 5px;
+      width: 40px;
+      height: 40px;
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      background-color: #e0e0e0;
+    }
+    .fault {
+      background-color: #f8d7da;
+    }
+    footer {
+      text-align: center;
+      padding: 1rem;
+      background-color: #007bff;
+      color: white;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  
+  <nav>
+    <div class="nav-left">PageHunt</div>
+    <div class="nav-right">
+      <a href="#">Login</a>
+      <a href="#">Signup</a>
+      <a href="#">About Us</a>
+      <a href="#">Reviews</a>
+    </div>
+  </nav>
+  <section style="text-align: center; margin-bottom: 2rem;">
+    <h1 style="color:blue">Welcome to PageHunt</h1>
+    <h4 style="text-align:center; font: size 100px;">PageHunt is an interactive visualizer that helps you understand how different page replacement algorithms like FIFO, LRU, and Optimal work. 
+    <br>Input a page reference string and frame size to see how each algorithm handles memory management and track the number of page faults.</h4>
+  </section>
+
+  <main>
+    <label>Page Reference String (comma separated):</label>
+    <input type="text" id="pages" placeholder="e.g. 7, 0, 1, 2, 0, 3, 0, 4" />
+
+    <label>Number of Frames:</label>
+    <input type="number" id="frameSize" min="1" placeholder="e.g. 3" />
+
+    <button onclick="runSimulation()">Simulate</button>
+
+    <div class="results" id="results"></div>
+  </main>
+  <footer>
+    &copy; 2025 PageHunt. All rights reserved.
+  </footer>
+
+  <script>
+    function parseInput() {
+      const pages = document.getElementById("pages").value.split(",").map(x => parseInt(x.trim()));
+      const frameSize = parseInt(document.getElementById("frameSize").value);
+      return { pages, frameSize };
+    }
+
+    function simulateAlgo(name, pages, frameSize, algoFn) {
+      const resultDiv = document.createElement("div");
+      resultDiv.innerHTML = `<h2>${name} Simulation:</h2>`;
+      const { faults, visuals } = algoFn(pages, frameSize);
+      const visContainer = document.createElement("div");
+      visContainer.className = "visual";
+
+      visuals.forEach(v => {
+        const el = document.createElement("div");
+        el.className = "frame";
+        if (v.fault) el.classList.add("fault");
+        el.innerText = v.page;
+        visContainer.appendChild(el);
+      });
+
+      resultDiv.appendChild(visContainer);
+      resultDiv.innerHTML += `<p><strong>Total Page Faults:</strong> ${faults}</p>`;
+      return resultDiv;
+    }
+
+    function fifo(pages, frameSize) {
+      let queue = [], faults = 0, visuals = [];
+      for (let page of pages) {
+        let fault = false;
+        if (!queue.includes(page)) {
+          if (queue.length >= frameSize) queue.shift();
+          queue.push(page);
+          faults++;
+          fault = true;
+        }
+        visuals.push({ page, fault });
+      }
+      return { faults, visuals };
+    }
+
+    function lru(pages, frameSize) {
+      let stack = [], faults = 0, visuals = [];
+      for (let page of pages) {
+        let fault = false;
+        let index = stack.indexOf(page);
+        if (index === -1) {
+          if (stack.length >= frameSize) stack.shift();
+          faults++;
+          fault = true;
+        } else {
+          stack.splice(index, 1);
+        }
+        stack.push(page);
+        visuals.push({ page, fault });
+      }
+      return { faults, visuals };
+    }
+
+    function optimal(pages, frameSize) {
+      let frames = [], faults = 0, visuals = [];
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        let fault = false;
+        if (!frames.includes(page)) {
+          if (frames.length < frameSize) {
+            frames.push(page);
+          } else {
+            let indexes = frames.map(p => {
+              let idx = pages.slice(i + 1).indexOf(p);
+              return idx === -1 ? Infinity : idx;
+            });
+            let victimIndex = indexes.indexOf(Math.max(...indexes));
+            frames[victimIndex] = page;
+          }
+          faults++;
+          fault = true;
+        }
+        visuals.push({ page, fault });
+      }
+      return { faults, visuals };
+    }
+
+    function runSimulation() {
+      const { pages, frameSize } = parseInput();
+      if (!pages.length || isNaN(frameSize) || frameSize < 1) {
+        alert("Please provide valid inputs.");
+        return;
+      }
+
+      const results = document.getElementById("results");
+      results.innerHTML = "";
+
+      results.appendChild(simulateAlgo("FIFO", pages, frameSize, fifo));
+      results.appendChild(simulateAlgo("LRU", pages, frameSize, lru));
+      results.appendChild(simulateAlgo("Optimal", pages, frameSize, optimal));
+    }
+  </script>
+</body>
+</html>
